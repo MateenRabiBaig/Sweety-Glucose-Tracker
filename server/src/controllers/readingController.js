@@ -186,3 +186,35 @@ export const deleteReading = async (req, res) => {
     return res.status(500).json({ message: "Unable to delete reading." });
   }
 };
+
+export const getPaginatedReadings = async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 10));
+    const offset = (page - 1) * limit;
+    const [readingsResult, countResult] = await Promise.all([
+      pool.query(
+        `SELECT *
+         FROM readings
+         WHERE user_id = $1
+         ORDER BY reading_date DESC, created_at DESC
+         LIMIT $2 OFFSET $3`,
+        [req.user.id, limit, offset]
+      ),
+      pool.query(
+        `SELECT COUNT(*) AS total
+         FROM readings
+         WHERE user_id = $1`,
+        [req.user.id]
+      )
+    ]);
+    const total = Number(countResult.rows[0].total);
+    const totalPages = Math.ceil(total / limit);
+
+    res.status(200).json({ readings: readingsResult.rows, pagination: { page, limit, total, totalPages } });
+  }
+  catch (error) {
+    console.error("Get paginated readings error:", error);
+    res.status(500).json({ message: "Unable to load readings. Please try again." });
+  }
+};

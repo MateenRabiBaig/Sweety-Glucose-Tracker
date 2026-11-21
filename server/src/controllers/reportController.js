@@ -102,3 +102,32 @@ export const getPreviousMonthReport = async (req, res) => {
     return res.status(500).json({ message: "Unable to generate previous month report." });
   }
 };
+
+export const getMonthlyTrends = async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT
+         TO_CHAR(months.month_start, 'Mon YYYY') AS month,
+         ROUND(AVG(readings.value), 1) AS average,
+         COUNT(readings.id)::INTEGER AS total_readings
+       FROM generate_series(
+         DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '5 months',
+         DATE_TRUNC('month', CURRENT_DATE),
+         INTERVAL '1 month'
+       ) AS months(month_start)
+       LEFT JOIN readings
+         ON readings.user_id = $1
+         AND readings.reading_date >= months.month_start
+         AND readings.reading_date < months.month_start + INTERVAL '1 month'
+       GROUP BY months.month_start
+       ORDER BY months.month_start`,
+      [req.user.id]
+    );
+
+    res.status(200).json({ trends: result.rows.map((row) => ({ month: row.month, average: row.average === null ? null : Number(row.average), totalReadings: Number(row.total_readings) })) });
+  }
+  catch (error) {
+    console.error("Get monthly trends error:", error);
+    res.status(500).json({ message: "Unable to load monthly trends." });
+  }
+};

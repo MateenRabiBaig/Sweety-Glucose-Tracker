@@ -66,13 +66,6 @@ const Reports = () => {
         <div className="app-layout">
             <Navbar />
             <main className="reports-main">
-                <div className="reports-heading">
-                    <div>
-                        <h1>Reports</h1>
-                        <p>Review your blood glucose history and statistics.</p>
-                    </div>
-                </div>
-
                 <section className="panel report-controls">
                     <div className="report-tabs">
                         <button className={reportType === "daily" ? "active" : ""} onClick={() => setReportType("daily")}>Daily</button>

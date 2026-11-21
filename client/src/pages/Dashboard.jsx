@@ -6,6 +6,7 @@ import StatCard from "../components/StatCard";
 import ReadingForm from "../components/ReadingForm";
 import ReadingList from "../components/ReadingList";
 import { getTodayDate } from "../utils/formatDate";
+import MonthlyTrendChart from "../components/MonthlyTrendChart";
 
 const Dashboard = () => {
   const { token } = useAuth();
@@ -16,24 +17,35 @@ const Dashboard = () => {
   const [deletingId, setDeletingId] = useState(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [allReadings, setAllReadings] = useState([]);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 });
 
-  const loadReadings = useCallback(async () => {
+  const loadReadings = useCallback(async (pageNumber = page) => {
     try {
-      setError("");
-      const data = await apiRequest("/readings", { token });
-      setReadings(data.readings || []);
+        setError("");
+        const [allData, pageData] = await Promise.all([apiRequest("/readings", { token }), apiRequest(`/readings/paginated?page=${pageNumber}&limit=10`, { token })]);
+        setAllReadings(allData.readings || []);
+        setReadings(pageData.readings || []);
+        setPagination(pageData.pagination);
     }
     catch (error) {
-      setError(error.message);
+        setError(error.message);
     }
     finally {
-      setLoading(false);
+        setLoading(false);
     }
-  }, [token]);
+  }, [token, page]);
 
   useEffect(() => {
-    loadReadings();
+    void loadReadings();
   }, [loadReadings]);
+
+  useEffect(() => {
+    if (pagination.totalPages > 0 && page > pagination.totalPages) {
+        setPage(pagination.totalPages);
+    }
+  }, [page, pagination.totalPages]);
 
   const handleSaveReading = async (formData) => {
     setSaving(true);
@@ -56,7 +68,8 @@ const Dashboard = () => {
         setNotice("Reading added successfully.");
       }
       setEditingReading(null);
-      await loadReadings();
+      setPage(1);
+      await loadReadings(1);
     }
     finally {
       setSaving(false);
@@ -82,7 +95,7 @@ const Dashboard = () => {
         setEditingReading(null);
       }
       setNotice("Reading deleted successfully.");
-      await loadReadings();
+      await loadReadings(page);
     }
     catch (error) {
       setError(error.message);
@@ -91,34 +104,19 @@ const Dashboard = () => {
       setDeletingId(null);
     }
   };
-
+  
   const today = getTodayDate();
-  const todayReadings = readings.filter((reading) => reading.reading_date.slice(0, 10) === today);
-  const latestReading = readings.length > 0 ? readings[0] : null;
+  const todayReadings = allReadings.filter((reading) => reading.reading_date.slice(0, 10) === today);
+  const latestReading = allReadings.length > 0 ? allReadings[0] : null;
 
   return (
     <div className="app-layout">
       <Navbar />
       <main className="dashboard-main">
-        <div className="dashboard-heading">
-          <div>
-            <h1>Dashboard</h1>
-            <p>Keep track of your blood glucose readings.</p>
-          </div>
-
-          <span className="today-date">
-            {new Date().toLocaleDateString("en-IN", {
-              day: "numeric",
-              month: "long",
-              year: "numeric"
-            })}
-          </span>
-        </div>
-
         <section className="stats-grid">
           <StatCard
             title="Total Readings"
-            value={readings.length}
+            value={allReadings.length}
             description="All recorded readings"
           />
 
@@ -147,6 +145,8 @@ const Dashboard = () => {
           </div>
         )}
 
+        <MonthlyTrendChart />
+
         <div className="dashboard-grid">
           <ReadingForm
             onSubmit={handleSaveReading}
@@ -173,6 +173,13 @@ const Dashboard = () => {
                 onDelete={handleDeleteReading}
                 deletingId={deletingId}
               />
+            )}
+            {pagination.totalPages > 1 && (
+                <div className="pagination">
+                    <button onClick={() => setPage((current) => current - 1)} disabled={page === 1}>Previous</button>
+                    <span>Page {page} of {pagination.totalPages}</span>
+                    <button onClick={() => setPage((current) => current + 1)} disabled={page === pagination.totalPages}>Next</button>
+                </div>
             )}
           </section>
         </div>
