@@ -19,12 +19,12 @@ const Dashboard = () => {
   const [notice, setNotice] = useState("");
   const [allReadings, setAllReadings] = useState([]);
   const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, totalPages: 0 });
+  const [pagination, setPagination] = useState({ page: 1, limit: 20, total: 0, totalPages: 0 });
 
   const loadReadings = useCallback(async (pageNumber = page) => {
     try {
         setError("");
-        const [allData, pageData] = await Promise.all([apiRequest("/readings", { token }), apiRequest(`/readings/paginated?page=${pageNumber}&limit=10`, { token })]);
+        const [allData, pageData] = await Promise.all([apiRequest("/readings", { token }), apiRequest(`/readings?page=${pageNumber}&limit=20`, { token })]);
         setAllReadings(allData.readings || []);
         setReadings(pageData.readings || []);
         setPagination(pageData.pagination);

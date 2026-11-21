@@ -85,6 +85,16 @@ describe("Sweety API Tests", () => {
     expect(Number(response.body.summary.average)).toBe(135);
   });
 
+  test("should paginate readings through the main readings endpoint", async () => {
+    const response = await request(app)
+      .get("/api/readings?page=1&limit=20")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body.pagination).toEqual({ page: 1, limit: 20, total: 1, totalPages: 1 });
+    expect(response.body.readings).toHaveLength(1);
+  });
+
   test("should return monthly trend data", async () => {
     const response = await request(app).get("/api/reports/trends").set("Authorization", `Bearer ${token}`);
     expect(response.statusCode).toBe(200);
